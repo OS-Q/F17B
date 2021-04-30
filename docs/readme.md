@@ -25,8 +25,3 @@ This is an implementation of LGT8Fx8P ISP download protocol. You can make arduin
 - You can read GUID!
 - You can read almost all flash after power-down
 
-
-## reference
-[LarduinoISP](https://github.com/LGTMCU/LarduinoISP)
-[ISP4LGT8F328P](https://github.com/nicechao/ISP4LGT8F328P)
-

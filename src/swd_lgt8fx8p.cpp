@@ -1,3 +1,10 @@
+/*******************************************************************************
+****版本：V1.0.4
+****平台：P17
+****日期：2021-04-30
+****作者：Qitas
+****版权：OS-Q
+*******************************************************************************/
 #include "swd_lgt8fx8p.h"
 
 void SWD_init()
@@ -15,23 +22,23 @@ void SWD_exit()
   SWD_WriteByte(1, 0xb1, 0);
   SWD_WriteByte(0, 0x0d, 1);
   SWD_Idle(2);
-  
+
   delayus(200);
-  
+
   /* software reset */
   SWD_WriteByte(1, 0xb1, 0);
   SWD_WriteByte(0, 0x0c, 1);
   SWD_Idle(2);
-  
+
   SWD_Idle(40);
-  
+
   //SWDIF_DIR &= ~(SWDIF_CLK | SWDIF_DAT);
 }
 
 void SWD_WriteByte(uint8_t start, uint8_t data, uint8_t stop)
 {
   volatile uint8_t cnt;
-  
+
   if(start) {
     SWC_CLR();
     SWD_Delay();
@@ -40,7 +47,7 @@ void SWD_WriteByte(uint8_t start, uint8_t data, uint8_t stop)
     SWC_SET();
     SWD_Delay();
   }
-  
+
   // send data
   for(cnt = 0; cnt < 8; cnt++)
   {
@@ -52,11 +59,11 @@ void SWD_WriteByte(uint8_t start, uint8_t data, uint8_t stop)
     SWC_SET();
     SWD_Delay();
   }
-  
+
   SWC_CLR();
   if(stop) SWD_SET();
   else SWD_CLR();
-  
+
   SWD_Delay();
   SWC_SET();
   SWD_Delay();
@@ -66,7 +73,7 @@ uint8_t SWD_ReadByte(uint8_t start, uint8_t stop)
 {
   volatile uint8_t cnt;
   volatile uint8_t bRes = 0;
-  
+
   if(start)
   {
     SWC_CLR();
@@ -74,9 +81,9 @@ uint8_t SWD_ReadByte(uint8_t start, uint8_t stop)
     SWD_CLR();
     SWD_Delay();
     SWC_SET();
-    SWD_Delay();		
+    SWD_Delay();
   }
-  
+
   SWD_IND();
   //SWD_Delay();
   for(cnt = 0; cnt < 8; cnt++)
@@ -86,30 +93,30 @@ uint8_t SWD_ReadByte(uint8_t start, uint8_t stop)
     SWD_Delay();
     if(SWDIF_PIN & SWDIF_DAT)
       bRes |= 0x80;
-    
+
     SWC_SET();
     SWD_Delay();
   }
-  
+
   SWD_OUD();
-  
+
   SWC_CLR();
   if(stop) SWD_SET();
   else SWD_CLR();
-  
+
   SWD_Delay();
   SWC_SET();
   SWD_Delay();
-  
+
   return bRes;
 }
 
 void SWD_Idle(uint8_t cnt)
 {
   volatile uint8_t i;
-  
+
   SWD_SET();
-  
+
   for(i = 0; i < cnt; i++)
   {
     SWC_CLR();
@@ -120,7 +127,7 @@ void SWD_Idle(uint8_t cnt)
 }
 
 void SWD_ReadSWDID(char *pdata)
-{	
+{
   SWD_WriteByte(1, 0xae, 1);
   SWD_Idle(4);
   pdata[0] = SWD_ReadByte(1, 0);
@@ -204,14 +211,14 @@ void SWD_EEE_DSEQ(uint32_t data)
 uint8_t SWD_EEE_GetBusy()
 {
   uint8_t res = 0;
-  
+
   SWD_WriteByte(1, 0xaa, 1);
   SWD_Idle(8);
   SWD_ReadByte(1, 0);
   SWD_ReadByte(0, 0);
   res = SWD_ReadByte(0, 1);
   SWD_Idle(8);
-  
+
   return res & 0x1;
 }
 
@@ -246,17 +253,17 @@ void crack() // 破解读保护(目前只能读出除了前1k以外的flash，�
 uint32_t SWD_EEE_Read(uint16_t addr)
 {
   uint32_t data;
-  
+
   SWD_EEE_CSEQ(0xc0, addr);
   SWD_EEE_CSEQ(0xe0, addr);
-  
+
   SWD_WriteByte(1, 0xaa, 1);
   ((uint8_t *)&data)[0] = SWD_ReadByte(1, 0);
   ((uint8_t *)&data)[1] = SWD_ReadByte(0, 0);
   ((uint8_t *)&data)[2] = SWD_ReadByte(0, 0);
   ((uint8_t *)&data)[3] = SWD_ReadByte(0, 1);
   SWD_Idle(4);
-  
+
   return data;
 }
 
@@ -271,29 +278,29 @@ void SWD_EEE_Write(uint32_t data, uint16_t addr)
 uint8_t SWD_UnLock(uint8_t chip_erase)
 {
   char swdid[4];
-  
+
   SWD_ReadSWDID(swdid); // {0x3e, 0xa2, 0x50, 0xe9}表示这是第一次进行SWD操作，{0x3f, 0xa2, 0x50, 0xe9}表示之前进行过SWD解锁操作
   SWD_SWDEN();
-  
+
   if (! (swdid[0] == 0x3e || swdid[0] == 0x3f)) // invalid device
     return 0;
-  
+
   if (swdid[0] == 0x3f && !chip_erase) // 已经解锁，且不全片擦除
     return 1;
-  
+
   if (swdid[0] == 0x3e) // 第一次解锁
     SWD_UnLock0();
-  
+
   if (chip_erase)
     SWD_ChipErase();
   else
     crack();
-  
+
   if (swdid[0] == 0x3e) // 第一次解锁
     {
       SWD_UnLock1();
       // 此时swdid[0] == 0x3f
-      
+
       SWD_WriteByte(1, 0xb1, 0);
       SWD_WriteByte(0, 0x3d, 0);
       SWD_WriteByte(0, 0x60, 0);
@@ -301,24 +308,24 @@ uint8_t SWD_UnLock(uint8_t chip_erase)
       SWD_WriteByte(0, 0x00, 0);
       SWD_WriteByte(0, 0x0f, 1);
       SWD_Idle(40);
-      
+
       SWD_UnLock2();
     }
   SWD_Idle(40);
-  
+
   SWD_WriteByte(1, 0xb1, 0);
   SWD_WriteByte(0, 0x0c, 0);
   SWD_WriteByte(0, 0x00, 0);
   SWD_WriteByte(0, 0x17, 1);
   SWD_Idle(40);
-  
+
   char flag[2];
   SWD_WriteByte(1, 0xa9, 1);
   SWD_Idle(4);
   flag[0] = SWD_ReadByte(1, 0);
   flag[1] = SWD_ReadByte(0, 1);
   SWD_Idle(4);
-  
+
   if (flag[1] == 0x20) // 0x60没有这段命令
     {
       SWD_WriteByte(1, 0xb1, 0);
@@ -334,28 +341,28 @@ uint8_t SWD_UnLock(uint8_t chip_erase)
     }
   else
     return 0;
-  
+
   SWD_WriteByte(1, 0xb1, 0);
   SWD_WriteByte(0, 0x0d, 1);
   SWD_Idle(2);
-  
+
   return 1;
 }
 
 void write_flash_pages(uint32_t addr, uint8_t buf[], int size)
 {
   addr /= 4; // lgt8fx8p的flash是按4字节编址的，而传入的参数是字节地址
-  
+
   SWD_EEE_CSEQ(0x00, addr);
   SWD_EEE_CSEQ(0x84, addr);
   SWD_EEE_CSEQ(0x86, addr);
-  
+
   for (int i = 0; i < size; i += 4)
     {
       SWD_EEE_Write(*((uint32_t *)(&buf[i])), addr);
       ++addr;
     }
-  
+
   SWD_EEE_CSEQ(0x82, addr - 1);
   SWD_EEE_CSEQ(0x80, addr - 1);
   SWD_EEE_CSEQ(0x00, addr - 1);
@@ -364,9 +371,9 @@ void write_flash_pages(uint32_t addr, uint8_t buf[], int size)
 void flash_read_page(uint32_t addr, uint8_t buf[], int size)
 {
   addr /= 4; // lgt8fx8p的flash是按4字节编址的，而传入的参数是字节地址
-  
+
   SWD_EEE_CSEQ(0x00, 0x01);
-  
+
   uint32_t data;
   for (int i = 0; i < size; ++i)
     {
@@ -377,7 +384,7 @@ void flash_read_page(uint32_t addr, uint8_t buf[], int size)
         }
       buf[i] = ((uint8_t *)&data)[i % 4];
     }
-  
+
   SWD_EEE_CSEQ(0x00, 0x01);
 }
 
@@ -388,10 +395,10 @@ void start_pmode(uint8_t chip_erase)
   RSTN_OUD(); // pinMode(RESET, OUTPUT);
   delay(20);
   RSTN_CLR(); // digitalWrite(RESET, LOW);
-  
+
   SWD_init();
   SWD_Idle(80);
-  
+
   pmode = SWD_UnLock(chip_erase);
   if (!pmode)
     pmode = SWD_UnLock(chip_erase);
@@ -401,7 +408,7 @@ void end_pmode()
 {
   SWD_exit();
   pmode = 0;
-  
+
   RSTN_SET(); // digitalWrite(RESET, HIGH);
   RSTN_IND(); // pinMode(RESET, INPUT);
 }
@@ -422,9 +429,9 @@ bool LGTISPClass::begin()
       start_pmode(0);
       chip_erased = 0;
     }
-  
+
   SWD_ReadGUID(guid);
-  
+
   return pmode;
 }
 
@@ -441,10 +448,10 @@ bool LGTISPClass::write(uint32_t addr, uint8_t buf[], int size)
         start_pmode(1);
         chip_erased = 1;
       }
-  
+
   if (pmode)
     write_flash_pages(addr, buf, size);
-  
+
   return pmode;
 }
 
@@ -452,7 +459,7 @@ bool LGTISPClass::read(uint32_t addr, uint8_t buf[], int size)
 {
   if (pmode)
     flash_read_page(addr, buf, size);
-  
+
   return pmode;
 }
 
@@ -464,7 +471,7 @@ bool LGTISPClass::isPmode()
 uint32_t LGTISPClass::getGUID() // return a 4 bytes guid
 {
   SWD_ReadGUID(guid);
-  
+
   return *((uint32_t *)guid);
 }
 

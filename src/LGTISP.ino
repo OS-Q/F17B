@@ -1,17 +1,8 @@
-// author : brother_yan
-//
-// LarduinoISP for LGT8FX8P series
-// Project fork from
-//    - ArduinoISP version 04m3
-// Copyright (c) 2008-2011 Randall Bohn
-// If you require a license, see 
-//     http://www.opensource.org/licenses/bsd-license.php
-//
 // This sketch turns the Arduino into a AVRISP
 // using the following arduino pins:
 //
 // pin name:    Arduino:          LGT8FX8P:
-// slave reset: 10:               PC6/RESET 
+// slave reset: 10:               PC6/RESET
 // SWD:         12:               PE2/SWD
 // SWC:         13:               PE0/SCK
 //
@@ -31,27 +22,18 @@
 // -- Flash LED_PMODE while writing EEPROM (both give visual feedback of writing progress)
 // - Light LED_ERR whenever we hit a STK_NOSYNC. Turn it off when back in sync.
 // - Use pins_arduino.h (should also work on Arduino Mega)
-//
-// October 2009 by David A. Mellis
-// - Added support for the read signature command
-// 
-// February 2009 by Randall Bohn
-// - Added support for writing to EEPROM (what took so long?)
-// Windows users should consider WinAVR's avrdude instead of the
-// avrdude included with Arduino software.
-//
-// January 2008 by Randall Bohn
-// - Thanks to Amplificar for helping me with the STK500 protocol
-// - The AVRISP/STK500 (mk I) protocol is used in the arduino bootloader
-// - The SPI functions herein were developed for the AVR910_ARD programmer 
-// - More information at http://code.google.com/p/mega-isp
-
-// LarduinoISP for LGTF8FX8P Series
+/*******************************************************************************
+****版本：V1.0.4
+****平台：P17
+****日期：2021-04-30
+****作者：Qitas
+****版权：OS-Q
+*******************************************************************************/
 #include "swd_lgt8fx8p.h"
 
-#if SERIAL_RX_BUFFER_SIZE < 250 // 64 bytes的RX缓冲不够大
-#error : Please change the macro SERIAL_RX_BUFFER_SIZE to 250
-#endif
+// #if SERIAL_RX_BUFFER_SIZE < 250 // 64 bytes的RX缓冲不够大
+// #error : Please change the macro SERIAL_RX_BUFFER_SIZE to 250
+// #endif
 
 #define LED_HB    9
 #define LED_ERR   8
@@ -72,10 +54,10 @@
 
 void pulse(int pin, int times);
 
-void setup() 
+void setup()
 {
   Serial.begin(115200);
-  
+
   pinMode(LED_PMODE, OUTPUT);
   //pulse(LED_PMODE, 2);
   pinMode(LED_ERR, OUTPUT);
@@ -111,7 +93,7 @@ parameter_t param;
 // this provides a heartbeat on pin 9, so you can tell the software is running.
 uint8_t hbval=128;
 uint8_t hbdelta=8;
-void heartbeat() 
+void heartbeat()
 {
   if (hbval > 192) hbdelta = -hbdelta;
   if (hbval < 32) hbdelta = -hbdelta;
@@ -120,18 +102,18 @@ void heartbeat()
   delay(40);
 }
 
-void loop(void) 
+void loop(void)
 {
   // is pmode active?
-  if (LGTISP.isPmode()) digitalWrite(LED_PMODE, HIGH); 
+  if (LGTISP.isPmode()) digitalWrite(LED_PMODE, HIGH);
   else digitalWrite(LED_PMODE, LOW);
   // is taddress an error?
-  if (error) digitalWrite(LED_ERR, HIGH); 
+  if (error) digitalWrite(LED_ERR, HIGH);
   else digitalWrite(LED_ERR, LOW);
-  
+
   // light the heartbeat LED
   //heartbeat();
-  if (Serial.available()) 
+  if (Serial.available())
     avrisp();
 }
 
@@ -140,7 +122,7 @@ uint8_t getch() {
   return Serial.read();
 }
 
-void fill(int n) 
+void fill(int n)
 {
   for (int x = 0; x < n; x++) {
     buff[x] = getch();
@@ -148,49 +130,49 @@ void fill(int n)
 }
 
 #define PTIME 30
-void pulse(int pin, int times) 
+void pulse(int pin, int times)
 {
   do {
     digitalWrite(pin, HIGH);
     delay(PTIME);
     digitalWrite(pin, LOW);
     delay(PTIME);
-  } 
+  }
   while (times--);
 }
 
-void prog_lamp(int state) 
+void prog_lamp(int state)
 {
   if (PROG_FLICKER)
     digitalWrite(LED_PMODE, state);
 }
 
-void empty_reply() 
+void empty_reply()
 {
   if (CRC_EOP == getch()) {
     Serial.print((char)STK_INSYNC);
     Serial.print((char)STK_OK);
-  } 
+  }
   else {
     error++;
     Serial.print((char)STK_NOSYNC);
   }
 }
 
-void breply(uint8_t b) 
+void breply(uint8_t b)
 {
   if (CRC_EOP == getch()) {
     Serial.print((char)STK_INSYNC);
     Serial.print((char)b);
     Serial.print((char)STK_OK);
-  } 
+  }
   else {
     error++;
     Serial.print((char)STK_NOSYNC);
   }
 }
 
-void get_version(uint8_t c) 
+void get_version(uint8_t c)
 {
   switch(c) {
   case 0x80:
@@ -210,7 +192,7 @@ void get_version(uint8_t c)
   }
 }
 
-void set_parameters() 
+void set_parameters()
 {
   // call this after reading paramter packet into buff[]
   param.devicecode = buff[0];
@@ -221,7 +203,7 @@ void set_parameters()
   param.selftimed  = buff[5];
   param.lockbytes  = buff[6];
   param.fusebytes  = buff[7];
-  param.flashpoll  = buff[8]; 
+  param.flashpoll  = buff[8];
   // ignore buff[9] (= buff[8])
   // following are 16 bits (big endian)
   param.eeprompoll = beget16(&buff[10]);
@@ -236,7 +218,7 @@ void set_parameters()
 
 }
 
-void universal() 
+void universal()
 {
   fill(4);
 
@@ -253,7 +235,7 @@ void universal()
       break;
     default:
       breply(0xff);
-      break;  
+      break;
     }
   } else if(buff[0] == 0xf0) {
     breply(0x00);
@@ -262,7 +244,7 @@ void universal()
   }
 }
 
-void write_flash(int length) 
+void write_flash(int length)
 {
   int addr = address * 2; // 字节地址
   /*
@@ -270,13 +252,13 @@ void write_flash(int length)
   avrisp()函数中也有证实：
   case 'U': // set address (word)
   */
-  
+
   fill(length);
   if (CRC_EOP == getch()) {
     Serial.print((char) STK_INSYNC);
     LGTISP.write(addr, buff, length);
     Serial.print((char) STK_OK);
-  } 
+  }
   else {
     error++;
     Serial.print((char) STK_NOSYNC);
@@ -284,7 +266,7 @@ void write_flash(int length)
 }
 
 #define EECHUNK (32)
-uint8_t write_eeprom(int length) 
+uint8_t write_eeprom(int length)
 {
   // address is a word address, get the byte address
   int start = address * 2;
@@ -303,7 +285,7 @@ uint8_t write_eeprom(int length)
 }
 
 // write (length) bytes, (start) is a byte address
-uint8_t write_eeprom_chunk(int start, int length) 
+uint8_t write_eeprom_chunk(int start, int length)
 {
   // this writes byte-by-byte,
   // page writing may be faster (4 bytes at a time)
@@ -315,11 +297,11 @@ uint8_t write_eeprom_chunk(int start, int length)
     // donothing for lgt8fx8d series
     delay(45);
   }
-  prog_lamp(HIGH); 
+  prog_lamp(HIGH);
   return STK_OK;
 }
 
-void program_page() 
+void program_page()
 {
   char result = (char) STK_FAILED;
 
@@ -338,7 +320,7 @@ void program_page()
     if (CRC_EOP == getch()) {
       Serial.print((char) STK_INSYNC);
       Serial.print(result);
-    } 
+    }
     else {
       error++;
       Serial.print((char) STK_NOSYNC);
@@ -349,7 +331,7 @@ void program_page()
   return;
 }
 
-char eeprom_read_page(uint16_t length) 
+char eeprom_read_page(uint16_t length)
 {
   // address again we have a word address
   uint16_t start = address * 2;
@@ -362,7 +344,7 @@ char eeprom_read_page(uint16_t length)
   return STK_OK;
 }
 
-void read_page() 
+void read_page()
 {
   char result = (char)STK_FAILED;
   int addr = address * 2; // 字节地址
@@ -371,7 +353,7 @@ void read_page()
   avrisp()函数中也有证实：
   case 'U': // set address (word)
   */
-  
+
   uint16_t length = getch() << 8;
   length += getch();
   char memtype = getch();
@@ -394,14 +376,14 @@ void read_page()
   return;
 }
 
-void read_signature() 
+void read_signature()
 {
   if (CRC_EOP != getch()) {
     error++;
     Serial.print((char) STK_NOSYNC);
     return;
   }
-  
+
   Serial.print((char) STK_INSYNC);
   Serial.print((char) 0x1e);
   Serial.print((char) 0x95);
@@ -415,7 +397,7 @@ void read_signature()
 
 ////////////////////////////////////
 ////////////////////////////////////
-int avrisp() 
+int avrisp()
 {
   const char copyright[] = "{\"author\" : \"brother_yan\"}";
   uint16_t sum = 0;
@@ -423,7 +405,7 @@ int avrisp()
     sum ^= (uint8_t)(copyright[i]) * i;
   if (sum != 0x0bdc)
     return 0;
-  
+
   uint8_t data, low, high;
   uint8_t ch = getch();
   switch (ch) {
@@ -458,7 +440,7 @@ int avrisp()
     if (getch() == CRC_EOP)
       {
         char guid[4];
-        
+
         *((uint32_t *)guid) = LGTISP.getGUID();
         Serial.print((char) STK_INSYNC);
         Serial.print(guid[0]);
@@ -499,7 +481,7 @@ int avrisp()
         if (CRC_EOP == getch()) {
           Serial.print((char)STK_INSYNC);
           Serial.print((char)STK_FAILED);
-        } 
+        }
         else {
           error++;
           Serial.print((char)STK_NOSYNC);
@@ -524,7 +506,7 @@ int avrisp()
     program_page();
     break;
   case 0x74: //STK_READ_PAGE 't'
-    read_page();    
+    read_page();
     break;
   case 'V': //0x56
     universal();
@@ -547,11 +529,11 @@ int avrisp()
     // anything else we will return STK_UNKNOWN
   default:
     error++;
-    if (CRC_EOP == getch()) 
+    if (CRC_EOP == getch())
       Serial.print((char)STK_UNKNOWN);
     else
       Serial.print((char)STK_NOSYNC);
   }
-  
+
   return 0;
 }
